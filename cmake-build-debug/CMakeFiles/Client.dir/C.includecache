@@ -9,4 +9,8 @@
 C:/Users/to_som_ja/Desktop/LangtonMravec/Client/main.c
 stdio.h
 -
+stdlib.h
+-
+string.h
+-
 

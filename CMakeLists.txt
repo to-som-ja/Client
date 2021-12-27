@@ -1,6 +1,7 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.7)
 project(Client C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(Client main.c)
+add_executable(Client main.c Mravec.h)
+

@@ -82,6 +82,9 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="C:/Users/to_som_ja/Desktop/LangtonMravec/Client/Mravec.h">
+			<Option target="Client"/>
+		</Unit>
 		<Unit filename="C:/Users/to_som_ja/Desktop/LangtonMravec/Client/main.c">
 			<Option target="Client"/>
 		</Unit>
