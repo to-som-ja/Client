@@ -1,79 +1,190 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <pthread.h>
 
 #define X 30 //stlpce
 #define Y 10 //riadok
-#define POCET 5
-typedef struct Mravec{
+#define POCET 10
+typedef struct Mravec {
     int polohaX;
     int polohaY;
     int smer; //0-hore,1-vpravo,2-dole,3-vlavo
     int logika; //0-priama,1-inverzna
-}Mravec;
+} Mravec;
 
-typedef struct Plocha{
-    int * velkostX;
-    int * velkostY;
-    int * plocha;
-}Plocha;
+typedef struct Plocha {
+    int *velkostX;
+    int *velkostY;
+    int *plocha;        // 1 = cierna, 0 = biela
+} Plocha;
 
-typedef struct data{
-    Plocha * pPlocha;
+typedef struct data {
+    Plocha *pPlocha;
     int pocetM;
-    Mravec * zoznamMravcov;
-    //pthready
+    Mravec *zoznamMravcov;
 
+    pthread_mutex_t *mutex;
+    pthread_cond_t *vypocitane;
+    pthread_cond_t *vykreslene;
 
-}DATA;
-int mapFunction(int x,int y){
-    return y*X+x;
+} DATA;
+
+int mapFunction(int x, int y) {
+    return y * X + x;
 }
 
-void * logika(void * data){
-    DATA * dataV =(DATA *) data;
+void posunMravca (int maxX, int maxY, Mravec *m) {
+
+    switch (m->smer) {
+        case 0:
+            if (m->polohaY - 1 >= 0) {
+                m->polohaY--;
+            }
+            break;
+        case 1:
+            if (m->polohaX + 1 < maxX) {
+                m->polohaX++;
+            }
+            break;
+        case 2:
+            if (m->polohaY + 1 < maxY) {
+                m->polohaY++;
+            }
+            break;
+        case 3:
+            if (m->polohaX - 1 >= 0) {
+                m->polohaX--;
+            }
+            break;
+    }
+
+}
+
+// logika mravca
+void *logika(void *data) {
+    DATA *dataV = (DATA *) data;
+
+    for (int i = 0; i < dataV->pocetM; ++i) {
+        Mravec *mravec = &dataV->zoznamMravcov[i];
+        int polohaX = mravec->polohaX;
+        int polohaY = mravec->polohaY;
+        int *farbaPolicka = &dataV->pPlocha->plocha[mapFunction(polohaX, polohaY)];
+
+        // inverzna logika
+        if(mravec->logika) {
+            // cierne policko
+            if (*farbaPolicka) {
+                mravec->smer = (mravec->smer + 1) % 4;
+                *farbaPolicka = 1;
+            }
+            // biele policko
+            else {
+                mravec->smer = (mravec->smer + 3) % 4;
+                *farbaPolicka = 0;
+            }
+        }
+        // priama logika
+        else {
+            // biele policko
+            if (!(*farbaPolicka)) {
+                mravec->smer = (mravec->smer + 1) % 4;
+                *farbaPolicka = 1;
+            }
+            // cierne policko
+            else {
+                mravec->smer = (mravec->smer + 3) % 4;
+                *farbaPolicka = 0;
+            }
+        }
+        posunMravca(*dataV->pPlocha->velkostX, *dataV->pPlocha->velkostY, mravec);
+    }
     return 0;
 }
 
+void nahodneCierne (Plocha *p) {
+    for (int i = 0; i < *p->velkostX; ++i) {
+        for (int j = 0; j < *p->velkostY; ++j) {
+            int sancaCierne = rand() % 100;
+            if (sancaCierne < 30) {
+                p->plocha[mapFunction(i,j)] = 1;
+            }
+        }
+    }
+}
 
-void * zobraz(void * data){
-    DATA * dataV =(DATA *) data;
+void nastavCierne (Plocha *p) {
+    while (1) {
+        printf("Na ukoncenie zadajte cislo mimo rozsahu.\n");
+        int vstupX = 0;
+        int vstupY = 0;
+        printf("Zadajte X suradnicu <0, %d) : ", *p->velkostX);
+        scanf("%d", &vstupX);
+        printf("\nZadajte Y suradnicu <0, %d) : ", *p->velkostY);
+        scanf("%d", &vstupY);
+        printf("\n");
+        if (vstupX >= 0 && vstupX < *p->velkostX && vstupY >= 0 && vstupY < *p->velkostY) {
+            p->plocha[mapFunction(vstupX, vstupY)] = 1;
+        } else {
+            printf("Koncim nastavovanie.\n");
+            break;
+        }
+    }
+}
 
-    for (int i = 0; i < Y; ++i) {
-        for (int j = 0; j < X; ++j) {
-            int smerMravca = 4;//4-niejeMravec
-            //printf("poloha X  %d",(dataV->zoznamMravcov[0].polohaX));
+void *zobraz(void *data) {
+    DATA *dataV = (DATA *) data;
+
+    for (int i = 0; i < *dataV->pPlocha->velkostY; ++i) {
+        for (int j = 0; j < *dataV->pPlocha->velkostX; ++j) {
+            int smerMravca = 4;         // 4 - na policku nie je mravec
 
             for (int k = 0; k < dataV->pocetM; ++k) {
-                //printf("poloha X  %d",(dataV->zoznamMravcov[0].polohaX));
-                if(dataV->zoznamMravcov[k].polohaX == j && dataV->zoznamMravcov[k].polohaY == i){
-                    //printf("tu");
+                if (dataV->zoznamMravcov[k].polohaX == j && dataV->zoznamMravcov[k].polohaY == i) {
                     smerMravca = dataV->zoznamMravcov[k].smer;
 
                 }
             }
 
-            //printf("zobrazujem smer %d",smerMravca);
-
-            if (smerMravca!=4){
-
+            int farbaPolicka = dataV->pPlocha->plocha[mapFunction(j,i)];
+            if (smerMravca != 4) {
                 switch (smerMravca) {
-                    case 0: printf("^ ");
+                    case 0:
+                        if (farbaPolicka) {
+                            printf("▲ ");
+                        } else {
+                            printf("^ ");
+                        }
                         break;
-                    case 1: printf("> ");
+                    case 1:
+                        if (farbaPolicka) {
+                            printf("► ");
+                        } else {
+                            printf("> ");
+                        }
                         break;
-                    case 2: printf("v ");
+                    case 2:
+                        if (farbaPolicka) {
+                            printf("▼ ");
+                        } else {
+                            printf("v ");
+                        }
                         break;
-                    case 3: printf("< ");
+                    case 3:
+                        if (farbaPolicka) {
+                            printf("◄ ");
+                        } else {
+                            printf("< ");
+                        }
                         break;
                 }
-            }else{
-                //printf("%d ",dataV->pPlocha->plocha[mapFunction(j,i)]);
-                if(dataV->pPlocha->plocha[mapFunction(j,i)] == 0){
-                   printf("_ ");
-                } else{
-                   printf("O ");
-               }
+            } else {
+                if (farbaPolicka == 0) {
+                    printf("□ ");
+                } else {
+                    printf("■ ");
+                }
             }
 
         }
@@ -82,37 +193,56 @@ void * zobraz(void * data){
     return 0;
 }
 
-
+// TODO
+/*
+ * Logika mravca (priama a inverzna)
+ *
+ */
 int main() {
     srand(time(NULL));
+    // TODO
+    /*
+     * Sparametrizovat
+     */
     int velkostX = X;
     int velkostY = Y;
-    //int plocha[X][Y];
-
-   // memset(plocha,0,X*Y);
-   // plocha[2][2]=1;
-    Plocha p = {&velkostX,&velkostY,malloc(sizeof(int)*X*Y)};
-    memset(p.plocha,0,X*Y*sizeof(int));
-    p.plocha[mapFunction(3,4)]=1;//4stlpec 5 riadok
-
     int pocet = POCET;
-    Mravec poleMravcov[POCET];
+
+    pthread_t grafikaTH, logikaTH;
+    pthread_mutex_t mutex;
+    pthread_cond_t vykreslene, vypocitane;
+
+    pthread_mutex_init(&mutex, NULL);
+    pthread_cond_init(&vykreslene, NULL);
+    pthread_cond_init(&vypocitane, NULL);
+
+    Plocha p = {&velkostX, &velkostY, malloc(sizeof(int) * velkostX * velkostY)};
+    memset(p.plocha, 0, velkostX * velkostY * sizeof(int));
+//    nahodneCierne(&p);
+    nastavCierne(&p);
+
+
+    DATA d = {&p, pocet, malloc(sizeof(Mravec) * pocet)};
+
     for (int i = 0; i < pocet; ++i) {
-        int polohaX = rand()%velkostX;
-        int polohaY = rand()%velkostY;
-        int smer = rand()%4;
+        int polohaX = rand() % velkostX;
+        int polohaY = rand() % velkostY;
+        int smer = rand() % 4;
+
         int logika = 0;
         Mravec m = {polohaX, polohaY, smer, logika};
-        poleMravcov[i] = m;
+        d.zoznamMravcov[i] = m;
     }
-    for (int i = 0; i < pocet; ++i) {
+    pthread_create(&grafikaTH, NULL, &zobraz, &d);
+    pthread_create(&logikaTH, NULL, &logika, &d);
 
-    }
-    DATA d={&p,POCET,poleMravcov};
-    //printf("%d",d.pPlocha->plocha[2][2]);
+    pthread_join(grafikaTH, NULL);
+    pthread_join(logikaTH, NULL);
 
-    zobraz(&d);
 
+    pthread_mutex_destroy(&mutex);
+    pthread_cond_destroy(&vypocitane);
+    pthread_cond_destroy(&vykreslene);
     return 0;
 }
 
