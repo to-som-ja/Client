@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/tmp/tmp.9GFpQ2mIlJ/main.c
+C:/Users/Lenovo/Desktop/Client/main.c
 stdio.h
 -
 stdlib.h
@@ -14,5 +14,7 @@ stdlib.h
 string.h
 -
 unistd.h
+-
+pthread.h
 -
 

@@ -24,7 +24,7 @@ typedef struct data {
     Plocha *pPlocha;
     int pocetM;
     Mravec *zoznamMravcov;
-
+    int vykresluje;
     pthread_mutex_t *mutex;
     pthread_cond_t *vypocitane;
     pthread_cond_t *vykreslene;
@@ -64,8 +64,12 @@ void posunMravca (int maxX, int maxY, Mravec *m) {
 
 // logika mravca
 void *logika(void *data) {
+    printf("Zacinam pocitat\n");
     DATA *dataV = (DATA *) data;
-
+    pthread_mutex_lock(dataV->mutex);
+    while (dataV->vykresluje) {
+        pthread_cond_wait(dataV->vypocitane, dataV->mutex);
+    }
     for (int i = 0; i < dataV->pocetM; ++i) {
         Mravec *mravec = &dataV->zoznamMravcov[i];
         int polohaX = mravec->polohaX;
@@ -100,6 +104,10 @@ void *logika(void *data) {
         }
         posunMravca(*dataV->pPlocha->velkostX, *dataV->pPlocha->velkostY, mravec);
     }
+    dataV->vykresluje = 1;
+    pthread_cond_signal(dataV->vykreslene);
+    printf("Koncim pocitanie\n");
+    pthread_mutex_unlock(dataV->mutex);
     return 0;
 }
 
@@ -135,7 +143,11 @@ void nastavCierne (Plocha *p) {
 
 void *zobraz(void *data) {
     DATA *dataV = (DATA *) data;
-
+    pthread_mutex_lock(dataV->mutex);
+    while (!dataV->vykresluje) {
+        pthread_cond_wait(dataV->vykreslene, dataV->mutex);
+    }
+    printf("Zobrazujem\n");
     for (int i = 0; i < *dataV->pPlocha->velkostY; ++i) {
         for (int j = 0; j < *dataV->pPlocha->velkostX; ++j) {
             int smerMravca = 4;         // 4 - na policku nie je mravec
@@ -190,6 +202,10 @@ void *zobraz(void *data) {
         }
         printf("\n");
     }
+    dataV->vykresluje = 0;
+    pthread_cond_signal(dataV->vypocitane);
+    printf("Koncim zobrazovanie\n");
+    pthread_mutex_unlock(dataV->mutex);
     return 0;
 }
 
@@ -207,7 +223,7 @@ int main() {
     int velkostX = X;
     int velkostY = Y;
     int pocet = POCET;
-
+    int vykresluje = 1;
     pthread_t grafikaTH, logikaTH;
     pthread_mutex_t mutex;
     pthread_cond_t vykreslene, vypocitane;
@@ -221,8 +237,7 @@ int main() {
 //    nahodneCierne(&p);
     nastavCierne(&p);
 
-
-    DATA d = {&p, pocet, malloc(sizeof(Mravec) * pocet)};
+    DATA d = {&p, pocet, malloc(sizeof(Mravec) * pocet), vykresluje, &mutex, &vykreslene, &vypocitane};
 
     for (int i = 0; i < pocet; ++i) {
         int polohaX = rand() % velkostX;
