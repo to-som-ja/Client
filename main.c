@@ -154,8 +154,8 @@ void *vypinac(void *data) {
     DATA *dataV = (DATA *) data; //stoj na zaciatku = 1
 
     while (1) {
-        char *x;
-        gets(x);
+        char str[50];
+        gets(str);
         pthread_mutex_lock(dataV->mutex);
         if (dataV->stoj) {
             dataV->stoj = 0;
@@ -234,9 +234,8 @@ void *zobraz(void *data) {
                         printf("■ ");
                     }
                 }
-
-                printf("\n");
             }
+            printf("\n");
         }
         printf("\n");
         sleep(2);
@@ -244,6 +243,7 @@ void *zobraz(void *data) {
         pthread_cond_signal(dataV->vypocitane);
         pthread_mutex_unlock(dataV->mutex);
     }
+
 
 
     return 0;
