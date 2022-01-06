@@ -3,12 +3,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
 
-
-#define X 30 //stlpce
-#define Y 10 //riadok
-#define POCET 10
 #define POCET_AKCII 12
+#define PORT 11123
+#define IP_ADDRESS "localhost"
 
 typedef struct Mravec {
     int polohaX;
@@ -92,12 +94,12 @@ void *logika(void *data) {
                 // cierne policko
                 if (*farbaPolicka) {
                     mravec->smer = (mravec->smer + 1) % 4;
-                    *farbaPolicka = 1;
+                    *farbaPolicka = 0;
                 }
                     // biele policko
                 else {
                     mravec->smer = (mravec->smer + 3) % 4;
-                    *farbaPolicka = 0;
+                    *farbaPolicka = 1;
                 }
             }
                 // priama logika
@@ -132,7 +134,6 @@ void *logika(void *data) {
 
             }
             if(nachadzaSaInyMravec>1){
-               // printf("nastal stret???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????\n");
                 switch (dataV->akcieStret) {
                     case 0:
                         dataV->zoznamMravcov[cisloDruheho]=dataV->zoznamMravcov[dataV->pocetM];
@@ -335,6 +336,98 @@ void nacitajSvetLokalne(Plocha *pPlocha) {
     fclose(file);*/
 }
 
+// akcia = 0-uloz na server, 1-nacitaj zo servera
+int spojenieServer(Plocha *pPlocha, int akcia) {
+    int sockfd, n;
+    struct sockaddr_in serv_addr;
+    struct hostent* server;
+
+    server = gethostbyname(IP_ADDRESS);
+    if (server == NULL)
+    {
+        fprintf(stderr, "Error, no such host\n");
+        return 2;
+    }
+
+    bzero((char*)&serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy(
+            (char*)server->h_addr,
+            (char*)&serv_addr.sin_addr.s_addr,
+            server->h_length
+    );
+    serv_addr.sin_port = htons(PORT);
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0)
+    {
+        perror("Error creating socket");
+        return 3;
+    }
+
+    if(connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
+    {
+        perror("Error connecting to socket");
+        return 4;
+    }
+
+    int converted_numberDotaz =  htonl(akcia);
+    write(sockfd, &converted_numberDotaz, sizeof(converted_numberDotaz));
+
+    char buffer[256];
+    bzero(buffer,256);
+    printf("Zadajte nazov suboru: ");
+    scanf("%255s", buffer);
+    printf("Zadali ste: %s \n", buffer);
+    write(sockfd, buffer, strlen(buffer));
+
+    int status;
+    if (!akcia) {
+        // ukladanie suboru na server
+        int a = *pPlocha->velkostX;
+        int b = *pPlocha->velkostY;
+        int converted_numberA = htonl(a);
+        int converted_numberB = htonl(b);
+
+        write(sockfd, &converted_numberA, sizeof(converted_numberA));
+        write(sockfd, &converted_numberB, sizeof(converted_numberB));
+        for (int i = 0; i < a * b; ++i) {
+
+            int converted_numberPole = htonl(pPlocha->plocha[i]);
+            write(sockfd, &converted_numberPole, sizeof(converted_numberPole));
+        }
+    } else {
+        // Nacitanie mapy zo servera
+        read(sockfd, &status, sizeof(status));
+        if (ntohl(status)==0){
+            int predX;
+            int predY;
+
+            read(sockfd, &predX, sizeof(predX));
+            read(sockfd, &predY, sizeof(predY));
+
+            *pPlocha->velkostX = ntohl(predX);
+            *pPlocha->velkostY = ntohl(predY);
+            pPlocha->plocha = malloc(sizeof (int) * *pPlocha->velkostX * *pPlocha->velkostY);
+            memset(pPlocha->plocha, 0, sizeof (int) * *pPlocha->velkostX * *pPlocha->velkostY);
+
+            for (int i = 0; i < *pPlocha->velkostX * *pPlocha->velkostY; ++i) {
+                int farba;
+                n = read(sockfd, &farba, sizeof(farba));
+                pPlocha->plocha[i] = ntohl(farba);
+            }
+
+        } else {
+            printf("cele zle-subor sa nenasiel\n");
+        }
+    }
+
+    read(sockfd,&status,sizeof (status));
+    status= ntohl(status);
+    printf("status: %d\n",status);
+    close(sockfd);
+    return 0;
+}
 
 int main() {
     srand(time(NULL));
@@ -430,7 +523,7 @@ int main() {
                     p.plocha = malloc(sizeof(int) * rozmerX * rozmerY);
                     memset(p.plocha, 0, rozmerX * rozmerY * sizeof(int));
                     d.pPlocha = &p;
-                    int dostupneAkcie2[12] = {0,1,1,0,1,1,1,1,0,0,1,1};
+                    int dostupneAkcie2[12] = {0,1,1,1,1,1,1,1,0,1,1,1};
                     memcpy(dostupneAkcie, dostupneAkcie2, sizeof (dostupneAkcie));
 
                 }
@@ -447,7 +540,7 @@ int main() {
                 break;
             case 4:
                 if (dostupneAkcie[3]) {
-
+                    // Nacitanie suboru
                     printf("Zadaj nazov suboru :");
                     char nazov[20];
                     scanf("%19s",nazov);
@@ -468,12 +561,13 @@ int main() {
                         p.plocha[i]=farba;
                     }
                     fclose(file);
-                    int dostupneAkcie2[12] = {0,1,1,0,1,1,1,1,0,0,1,1};
+                    int dostupneAkcie2[12] = {0,1,1,1,1,1,1,1,0,1,1,1};
                     memcpy(dostupneAkcie, dostupneAkcie2, sizeof (dostupneAkcie));
                 }
                 break;
             case 5:
                 if (dostupneAkcie[4]) {
+                    // Ukladanie suboru
                     ulozSvetLokalne(&p);
                 }
                 break;
@@ -492,7 +586,7 @@ int main() {
                         Mravec m = {polohaX, polohaY, smer, logika};
                         d.zoznamMravcov[i] = m;
                     }
-                    int dostupneAkcie2[12] = {0,1,1,0,1,1,1,1,1,0,1,1};
+                    int dostupneAkcie2[12] = {0,1,1,1,1,1,1,1,1,0,1,1};
                     memcpy(dostupneAkcie, dostupneAkcie2, sizeof (dostupneAkcie));
                 }
                 break;
@@ -531,14 +625,20 @@ int main() {
                 break;
             case 10:
                 if (dostupneAkcie[9]) {
-                   // nacitajSvetZoServera();
-                    int dostupneAkcie2[12] = {0,1,1,0,1,1,1,1,1,0,0,1,};
+                    int *velkostX;
+                    int *velkostY;
+                    p.velkostX = velkostX;
+                    p.velkostY = velkostY;
+                    spojenieServer(&p, 1);
+                    int dostupneAkcie2[12] = {0,1,1,0,1,1,1,1,1,0,1,1,};
                     memcpy(dostupneAkcie, dostupneAkcie2, sizeof (dostupneAkcie));
                 }
                 break;
             case 11:
                 if (dostupneAkcie[10]) {
-                   // ulozSvetNaServer();
+                    spojenieServer(&p, 0);
+                    int dostupneAkcie2[12] = {0,1,1,0,1,1,1,1,1,0,1,1,};
+                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof (dostupneAkcie));
                 }
                 break;
         }
@@ -555,8 +655,8 @@ int main() {
  * nastavenie akcii
  * SERVER vsetko
  * pauza - doplnit akcie
- * uprava
+ * uprava kodu
  * dokumentacia + prirucka
-
+ */
 
 
