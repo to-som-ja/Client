@@ -209,8 +209,11 @@ void nastavCierne(Plocha *p) {
 
 void *vypinac(void *data) {
     DATA *dataV = (DATA *) data; //stoj na zaciatku = 1
-
+    int pocet = 0;
     while (1) {
+        if (pocet) {
+            prin
+        }
         char str[50];
         gets(str);
         //printf("som za gets");
@@ -324,7 +327,7 @@ void ulozSvetLokalne(Plocha *p){
 }
 
 // akcia = 0-uloz na server, 1-nacitaj zo servera
-int spojenieServer(Plocha *pPlocha, int akcia) {
+int spojenieServer(Plocha *pPlocha, int akcia, int *velkostX, int *velkostY) {
     int sockfd, n;
     struct sockaddr_in serv_addr;
     struct hostent* server;
@@ -399,12 +402,12 @@ int spojenieServer(Plocha *pPlocha, int akcia) {
             printf("Y: %d\n",ntohl(predY));
             int x= ntohl(predX);
             int y = ntohl(predY);
-            pPlocha->velkostX = &x;
-            pPlocha->velkostY = &y;
-            pPlocha->plocha = malloc(sizeof (int) * *pPlocha->velkostX * *pPlocha->velkostY);
-            memset(pPlocha->plocha, 0, sizeof (int) * *pPlocha->velkostX * *pPlocha->velkostY);
+            *velkostX = x;
+            *velkostY = y;
+            pPlocha->plocha = malloc(sizeof (int) * x * y);
+            memset(pPlocha->plocha, 0, sizeof (int) * x * y);
 
-            for (int i = 0; i < *pPlocha->velkostX * *pPlocha->velkostY; ++i) {
+            for (int i = 0; i < x*y; ++i) {
                 int farba;
                 n = read(sockfd, &farba, sizeof(farba));
                 pPlocha->plocha[i] = ntohl(farba);
@@ -571,10 +574,12 @@ int main() {
                     scanf("%d", &pocet);
                     d.pocetM = pocet;
                     d.zoznamMravcov = malloc(sizeof(Mravec) * pocet);
+                   // Mravec *mravce[pocet];
                     for (int i = 0; i < pocet; ++i) {
-                        int polohaX = rand() % *p.velkostX;
-                        int polohaY = rand() % *p.velkostY;
+                        int polohaX = rand() % *d.pPlocha->velkostX;
+                        int polohaY = rand() % *d.pPlocha->velkostY;
                         int smer = rand() % 4;
+
 
                         int logika = 0;
                         Mravec m = {polohaX, polohaY, smer, logika};
@@ -619,20 +624,33 @@ int main() {
                 break;
             case 10:
                 if (dostupneAkcie[9]) {
-                    int *velkostX=0;
-                    int *velkostY=0;
-                    p.velkostX = velkostX;
-                    p.velkostY = velkostY;
-                    spojenieServer(&p, 1);
+                    int velkostX;
+                    int velkostY;
+//
+                    spojenieServer(&p, 1,&velkostX,&velkostY);
+                    p.velkostX = &velkostX;
+                    p.velkostY = &velkostY;
+                    d.pPlocha=&p;
+
                     int dostupneAkcie2[12] = {0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1,};
                     memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
                 }
                 break;
             case 11:
                 if (dostupneAkcie[10]) {
-                    spojenieServer(&p, 0);
+                    spojenieServer(&p, 0 , 0,0);
                     int dostupneAkcie2[12] = {0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1,};
                     memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
+                }
+                break;
+            case 12:
+
+                printf("Velkost X: %d \n",*d.pPlocha->velkostX);
+                printf("Velkost Y: %d \n",*d.pPlocha->velkostY);
+                printf("Pocet mravcov: %d \n",d.pocetM);
+                printf("Akcia pri strete : %d \n",d.akcieStret);
+                for (int i = 0; i < *d.pPlocha->velkostX**d.pPlocha->velkostY; ++i) {
+                    printf("%d ",d.pPlocha->plocha[i]);
                 }
                 break;
         }
