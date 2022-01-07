@@ -9,7 +9,7 @@
 #include <netdb.h>
 
 #define POCET_AKCII 12
-#define PORT 11123
+#define PORT 11124
 #define IP_ADDRESS "localhost"
 
 typedef struct Mravec {
@@ -144,7 +144,7 @@ void *logika(void *data) {
                     case 1:
                         //memmove(&dataV->zoznamMravcov[cisloDruheho],&dataV->zoznamMravcov[dataV->pocetM],sizeof (Mravec));
                         dataV->zoznamMravcov[cisloDruheho]=dataV->zoznamMravcov[dataV->pocetM];
-                            dataV->pocetM--;
+                        dataV->pocetM--;
                         break;
                     case 2:
                         for (int j = 0; j < dataV->pocetM/2; ++j) {
@@ -160,7 +160,7 @@ void *logika(void *data) {
 
 
         }
-       // printf("Koncim pocitanie\n");
+        // printf("Koncim pocitanie\n");
         dataV->vykresluje = 1;
         pthread_cond_signal(dataV->vykreslene);
 
@@ -240,7 +240,7 @@ void *zobraz(void *data) {
         while (!dataV->vykresluje) {
             pthread_cond_wait(dataV->vykreslene, dataV->mutex);
         }
-       // printf("Zobrazujem");
+        // printf("Zobrazujem");
         for (int i = 0; i < *dataV->pPlocha->velkostY; ++i) {
             for (int j = 0; j < *dataV->pPlocha->velkostX; ++j) {
                 int smerMravca = 4;         // 4 - na policku nie je mravec
@@ -309,8 +309,8 @@ void *zobraz(void *data) {
 }
 void ulozSvetLokalne(Plocha *p){
     printf("Zadaj nazov suboru :");
-   char nazov[20];
-   scanf("%19s",nazov);
+    char nazov[20];
+    scanf("%19s",nazov);
     FILE *file = fopen(nazov,"w");
     //char text[p->velkostX*p->velkostY+10];
 
@@ -321,19 +321,6 @@ void ulozSvetLokalne(Plocha *p){
         fprintf(filea,"%d \n",p->plocha[i]);
     }
     fclose(filea);
-}
-
-void nacitajSvetLokalne(Plocha *pPlocha) {
-    //printf("Zadaj nazov suboru :");
-    //char nazov[20];
-    //scanf("%19s",nazov);
-    /*FILE *file = fopen("test.txt","r");
-    int velkostX,velkostY;
-    fscanf(file,"%d ",&velkostX);
-    fscanf(file,"%d ",&velkostY);
-
-
-    fclose(file);*/
 }
 
 // akcia = 0-uloz na server, 1-nacitaj zo servera
@@ -379,7 +366,6 @@ int spojenieServer(Plocha *pPlocha, int akcia) {
     printf("Zadajte nazov suboru: ");
     scanf("%255s", buffer);
     printf("Zadali ste: %s \n", buffer);
-    write(sockfd, buffer, strlen(buffer));
 
     int status;
     if (!akcia) {
@@ -391,13 +377,17 @@ int spojenieServer(Plocha *pPlocha, int akcia) {
 
         write(sockfd, &converted_numberA, sizeof(converted_numberA));
         write(sockfd, &converted_numberB, sizeof(converted_numberB));
+
+
         for (int i = 0; i < a * b; ++i) {
 
             int converted_numberPole = htonl(pPlocha->plocha[i]);
             write(sockfd, &converted_numberPole, sizeof(converted_numberPole));
         }
+        write(sockfd, buffer, strlen(buffer));
     } else {
         // Nacitanie mapy zo servera
+        write(sockfd, buffer, strlen(buffer));
         read(sockfd, &status, sizeof(status));
         if (ntohl(status)==0){
             int predX;
@@ -405,9 +395,12 @@ int spojenieServer(Plocha *pPlocha, int akcia) {
 
             read(sockfd, &predX, sizeof(predX));
             read(sockfd, &predY, sizeof(predY));
-
-            *pPlocha->velkostX = ntohl(predX);
-            *pPlocha->velkostY = ntohl(predY);
+            printf("X: %d\n",ntohl(predX));
+            printf("Y: %d\n",ntohl(predY));
+            int x= ntohl(predX);
+            int y = ntohl(predY);
+            pPlocha->velkostX = &x;
+            pPlocha->velkostY = &y;
             pPlocha->plocha = malloc(sizeof (int) * *pPlocha->velkostX * *pPlocha->velkostY);
             memset(pPlocha->plocha, 0, sizeof (int) * *pPlocha->velkostX * *pPlocha->velkostY);
 
@@ -422,9 +415,9 @@ int spojenieServer(Plocha *pPlocha, int akcia) {
         }
     }
 
-    read(sockfd,&status,sizeof (status));
-    status= ntohl(status);
-    printf("status: %d\n",status);
+    //read(sockfd,&status,sizeof (status));
+    //status= ntohl(status);
+    //printf("status: %d\n",status);
     close(sockfd);
     return 0;
 }
@@ -433,9 +426,9 @@ int main() {
     srand(time(NULL));
 
 
-    int vstup=1;
+    int vstup = 1;
     Plocha p;
-    int pocet=1;
+    int pocet = 1;
     DATA d;
 
     pthread_t grafikaTH, logikaTH, vypinacTH;
@@ -449,9 +442,9 @@ int main() {
 
 
     int rozmerX, rozmerY;
-    d.pocetM=1;
-    d.vykresluje=1;
-    d.stoj=1;
+    d.pocetM = 1;
+    d.vykresluje = 1;
+    d.stoj = 1;
     d.akcieStret = 0;
     d.mutex = &mutex;
     d.vypocitane = &vypocitane;
@@ -472,7 +465,6 @@ int main() {
         int polohaX = rand() % *p.velkostX;
         int polohaY = rand() % *p.velkostY;
         int smer = rand() % 4;
-
         int logika = 0;
         Mravec m = {polohaX, polohaY, smer, logika};
         d.zoznamMravcov[i] = m;
@@ -480,7 +472,6 @@ int main() {
     pthread_create(&grafikaTH, NULL, &zobraz, &d);
     pthread_create(&logikaTH, NULL, &logika, &d);
     pthread_create(&vypinacTH, NULL, &vypinac, &d);
-
     pthread_join(grafikaTH, NULL);
     pthread_join(logikaTH, NULL);
     pthread_join(vypinacTH, NULL);
@@ -489,15 +480,18 @@ int main() {
 
 
 
-    char textAkcii[POCET_AKCII][36] = {"1 - Vytvorit svet", "2 - Generovat cierne polia", "3 - Definovat konkretne cierne polia",
-                                       "4 - Nacitat svet (lokalne)", "5 - Ulozit svet (lokalne)", "6 - Pocet mravcov", "7 - Logika mravcov",
-                                       "8 - Akcia pri strete mravcov", "9 - Spustit / Zastavit simulaciu", "10 - Nacitat svet (server)",
+    char textAkcii[POCET_AKCII][36] = {"1 - Vytvorit svet", "2 - Generovat cierne polia",
+                                       "3 - Definovat konkretne cierne polia",
+                                       "4 - Nacitat svet (lokalne)", "5 - Ulozit svet (lokalne)", "6 - Pocet mravcov",
+                                       "7 - Logika mravcov",
+                                       "8 - Akcia pri strete mravcov", "9 - Spustit / Zastavit simulaciu",
+                                       "10 - Nacitat svet (server)",
                                        "11 - Ulozit svet (server)", "99 - Ukoncit aplikaciu"};
-    int dostupneAkcie[POCET_AKCII] = {1,0,0,1,0,0,0,0,0,1,0,1}; //bitova reprezentacia dostupnych akcii
+    int dostupneAkcie[POCET_AKCII] = {1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1}; //bitova reprezentacia dostupnych akcii
     while (vstup != 99) {
         printf("---MENU---\nMozne akcie:\n");
         for (int i = 0; i < POCET_AKCII; ++i) {
-            if(dostupneAkcie[i]) {
+            if (dostupneAkcie[i]) {
                 printf("%s", textAkcii[i]);
                 printf("\n");
             }
@@ -505,7 +499,7 @@ int main() {
         printf("Vyberam akciu cislo: ");
         scanf("%d", &vstup);
         if (vstup == 99) {
-           // ukonciAplikaciu();
+            // ukonciAplikaciu();
         }
         switch (vstup) {
 
@@ -523,8 +517,8 @@ int main() {
                     p.plocha = malloc(sizeof(int) * rozmerX * rozmerY);
                     memset(p.plocha, 0, rozmerX * rozmerY * sizeof(int));
                     d.pPlocha = &p;
-                    int dostupneAkcie2[12] = {0,1,1,1,1,1,1,1,0,1,1,1};
-                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof (dostupneAkcie));
+                    int dostupneAkcie2[12] = {0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1};
+                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
 
                 }
                 break;
@@ -543,11 +537,11 @@ int main() {
                     // Nacitanie suboru
                     printf("Zadaj nazov suboru :");
                     char nazov[20];
-                    scanf("%19s",nazov);
-                    FILE *file = fopen(nazov,"r");
-                    int velkostX,velkostY;
-                    fscanf(file,"%d ",&velkostX);
-                    fscanf(file,"%d ",&velkostY);
+                    scanf("%19s", nazov);
+                    FILE *file = fopen(nazov, "r");
+                    int velkostX, velkostY;
+                    fscanf(file, "%d ", &velkostX);
+                    fscanf(file, "%d ", &velkostY);
 
 
                     p.velkostY = &velkostY;
@@ -555,14 +549,14 @@ int main() {
                     p.plocha = malloc(sizeof(int) * rozmerX * rozmerY);
                     memset(p.plocha, 0, rozmerX * rozmerY * sizeof(int));
                     d.pPlocha = &p;
-                    for (int i = 0; i < velkostX*velkostY; ++i) {
+                    for (int i = 0; i < velkostX * velkostY; ++i) {
                         int farba;
-                        fscanf(file,"%d ",&farba);
-                        p.plocha[i]=farba;
+                        fscanf(file, "%d ", &farba);
+                        p.plocha[i] = farba;
                     }
                     fclose(file);
-                    int dostupneAkcie2[12] = {0,1,1,1,1,1,1,1,0,1,1,1};
-                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof (dostupneAkcie));
+                    int dostupneAkcie2[12] = {0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1};
+                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
                 }
                 break;
             case 5:
@@ -586,8 +580,8 @@ int main() {
                         Mravec m = {polohaX, polohaY, smer, logika};
                         d.zoznamMravcov[i] = m;
                     }
-                    int dostupneAkcie2[12] = {0,1,1,1,1,1,1,1,1,0,1,1};
-                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof (dostupneAkcie));
+                    int dostupneAkcie2[12] = {0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1};
+                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
                 }
                 break;
             case 7:
@@ -610,7 +604,7 @@ int main() {
                 break;
             case 9:
                 if (dostupneAkcie[8]) {
-                   // zapniVypni();
+                    // zapniVypni();
                     char str[50];
                     gets(str);
                     pthread_create(&grafikaTH, NULL, &zobraz, &d);
@@ -625,38 +619,22 @@ int main() {
                 break;
             case 10:
                 if (dostupneAkcie[9]) {
-                    int *velkostX;
-                    int *velkostY;
+                    int *velkostX=0;
+                    int *velkostY=0;
                     p.velkostX = velkostX;
                     p.velkostY = velkostY;
                     spojenieServer(&p, 1);
-                    int dostupneAkcie2[12] = {0,1,1,0,1,1,1,1,1,0,1,1,};
-                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof (dostupneAkcie));
+                    int dostupneAkcie2[12] = {0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1,};
+                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
                 }
                 break;
             case 11:
                 if (dostupneAkcie[10]) {
                     spojenieServer(&p, 0);
-                    int dostupneAkcie2[12] = {0,1,1,0,1,1,1,1,1,0,1,1,};
-                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof (dostupneAkcie));
+                    int dostupneAkcie2[12] = {0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1,};
+                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
                 }
                 break;
         }
     }
-
-
-
-    pthread_mutex_destroy(&mutex);
-    pthread_cond_destroy(&vypocitane);
-    pthread_cond_destroy(&vykreslene);
-    return 0;
 }
-/*TODO
- * nastavenie akcii
- * SERVER vsetko
- * pauza - doplnit akcie
- * uprava kodu
- * dokumentacia + prirucka
- */
-
-
