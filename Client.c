@@ -15,13 +15,13 @@
 
 #define PORT 11124
 #define IP_ADDRESS "localhost"
-#define texty char textAkcii[POCET_AKCII][36] = {"1 - Vytvorit svet", "2 - Generovat cierne polia",\
-                                       "3 - Definovat konkretne cierne polia",\
-                                       "4 - Nacitat svet (lokalne)", "5 - Ulozit svet (lokalne)", "6 - Pocet mravcov",\
-                                       "7 - Logika mravcov",\
-                                       "8 - Akcia pri strete mravcov", "9 - Spustit / Zastavit simulaciu",\
-                                       "10 - Nacitat svet (server)",\
-                                       "11 - Ulozit svet (server)", "12 - Info", "99 - Ukoncit aplikaciu"}
+#define texty char textAkcii[POCET_AKCII][50] = {"1 - Vytvorit svet\n", "2 - Generovat cierne polia\n",\
+                                       "3 - Definovat konkretne cierne polia\n",\
+                                       "4 - Nacitat svet (lokalne)\n", "5 - Ulozit svet (lokalne)\n", "6 - Pocet mravcov\n",\
+                                       "7 - Logika mravcov\n",\
+                                       "8 - Akcia pri strete mravcov\n", "9 - Spustit simulaciu\n",\
+                                       "10 - Nacitat svet (server)\n",\
+                                       "11 - Ulozit svet (server)\n", "12 - Info\n", "99 - Ukoncit aplikaciu\n"}
 
 void menu() {
 
@@ -57,7 +57,6 @@ void menu() {
         for (int i = 0; i < POCET_AKCII; ++i) {
             if (dostupneAkcie[i]) {
                 printf("%s", textAkcii[i]);
-                printf("\n");
             }
         }
         printf("Vyberam akciu cislo: ");
