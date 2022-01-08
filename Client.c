@@ -167,7 +167,6 @@ void menu() {
                 break;
             case 9:
                 if (dostupneAkcie[8]) {
-                    // zapniVypni();
                     char str[50];
                     gets(str);
                     d.vykresluje = 1;
@@ -212,62 +211,11 @@ void menu() {
                 }
                 break;
             case 12:
-
                 printf("Velkost X: %d \n", *d.pPlocha->velkostX);
                 printf("Velkost Y: %d \n", *d.pPlocha->velkostY);
                 printf("Pocet mravcov: %d \n", d.pocetM);
                 printf("Akcia pri strete : %d \n", d.akcieStret);
-                for (int i = 0; i < *d.pPlocha->velkostY; ++i) {
-                    for (int j = 0; j < *d.pPlocha->velkostX; ++j) {
-                        int smerMravca = 4;         // 4 - na policku nie je mravec
-
-                        for (int k = 0; k < d.pocetM; ++k) {
-                            if (d.zoznamMravcov[k].polohaX == j && d.zoznamMravcov[k].polohaY == i) {
-                                smerMravca = d.zoznamMravcov[k].smer;
-                            }
-                        }
-                        int farbaPolicka = d.pPlocha->plocha[mapFunction(j, i, *d.pPlocha->velkostX)];
-                        if (smerMravca != 4) {
-                            switch (smerMravca) {
-                                case 0:
-                                    if (farbaPolicka) {
-                                        printf("▲ ");
-                                    } else {
-                                        printf("^ ");
-                                    }
-                                    break;
-                                case 1:
-                                    if (farbaPolicka) {
-                                        printf("► ");
-                                    } else {
-                                        printf("> ");
-                                    }
-                                    break;
-                                case 2:
-                                    if (farbaPolicka) {
-                                        printf("▼ ");
-                                    } else {
-                                        printf("v ");
-                                    }
-                                    break;
-                                case 3:
-                                    if (farbaPolicka) {
-                                        printf("◄ ");
-                                    } else {
-                                        printf("< ");
-                                    }
-                                    break;
-                            }
-                        } else {
-                            if (farbaPolicka == 0) {
-                                printf("□ ");
-                            } else {
-                                printf("■ ");
-                            }
-                        }
-                    }
-                    printf("\n");
-                }
+                vykresliPlochu(&d);
                 break;
         }
     }
@@ -320,8 +268,6 @@ void *logika(void *data) {
         while (dataV->vykresluje) {
             pthread_cond_wait(dataV->vypocitane, dataV->mutex);
         }
-        //printf("Pocitam\n");
-
         for (int i = 0; i < dataV->pocetM; ++i) {
             Mravec *mravec = &dataV->zoznamMravcov[i];
             int polohaX = mravec->polohaX;
@@ -380,7 +326,6 @@ void *logika(void *data) {
                         dataV->pocetM--;
                         break;
                     case 1:
-                        //memmove(&dataV->zoznamMravcov[cisloDruheho],&dataV->zoznamMravcov[dataV->pocetM],sizeof (Mravec));
                         dataV->zoznamMravcov[cisloDruheho] = dataV->zoznamMravcov[dataV->pocetM];
                         dataV->pocetM--;
                         break;
@@ -396,7 +341,6 @@ void *logika(void *data) {
                 }
             }
         }
-        // printf("Koncim pocitanie\n");
         dataV->vykresluje = 1;
         pthread_cond_signal(dataV->vykreslene);
 
@@ -406,8 +350,6 @@ void *logika(void *data) {
         }
         pthread_mutex_unlock(dataV->mutex);
     }
-
-    return 0;
 }
 
 void nahodneCierne(Plocha *p) {
@@ -419,7 +361,7 @@ void nahodneCierne(Plocha *p) {
             }
         }
     }
-    printf("Cierne polia sa nastavili");
+    printf("Cierne polia sa nastavili\n");
 }
 
 void nastavCierne(Plocha *p) {
@@ -452,6 +394,62 @@ void *vypinac(void *data) {
     return 0;
 }
 
+void vykresliPlochu(const DATA *dataV) {
+    for (int i = 0; i < *dataV->pPlocha->velkostY; ++i) {
+        for (int j = 0; j < *dataV->pPlocha->velkostX; ++j) {
+            int smerMravca = 4;         // 4 - na policku nie je mravec
+
+            for (int k = 0; k < dataV->pocetM; ++k) {
+                if (dataV->zoznamMravcov[k].polohaX == j && dataV->zoznamMravcov[k].polohaY == i) {
+                    smerMravca = dataV->zoznamMravcov[k].smer;
+
+                }
+            }
+
+            int farbaPolicka = dataV->pPlocha->plocha[mapFunction(j, i, *dataV->pPlocha->velkostX)];
+            if (smerMravca != 4) {
+                switch (smerMravca) {
+                    case 0:
+                        if (farbaPolicka) {
+                            printf("▲ ");
+                        } else {
+                            printf("^ ");
+                        }
+                        break;
+                    case 1:
+                        if (farbaPolicka) {
+                            printf("► ");
+                        } else {
+                            printf("> ");
+                        }
+                        break;
+                    case 2:
+                        if (farbaPolicka) {
+                            printf("▼ ");
+                        } else {
+                            printf("v ");
+                        }
+                        break;
+                    case 3:
+                        if (farbaPolicka) {
+                            printf("◄ ");
+                        } else {
+                            printf("< ");
+                        }
+                        break;
+                }
+            } else {
+                if (farbaPolicka == 0) {
+                    printf("□ ");
+                } else {
+                    printf("■ ");
+                }
+            }
+        }
+        printf("\n");
+    }
+}
+
 void *zobraz(void *data) {
     DATA *dataV = (DATA *) data;
     pthread_mutex_lock(dataV->mutex);
@@ -459,64 +457,10 @@ void *zobraz(void *data) {
 
     while (1) {
 
-
         while (!dataV->vykresluje) {
             pthread_cond_wait(dataV->vykreslene, dataV->mutex);
         }
-        // printf("Zobrazujem");
-        for (int i = 0; i < *dataV->pPlocha->velkostY; ++i) {
-            for (int j = 0; j < *dataV->pPlocha->velkostX; ++j) {
-                int smerMravca = 4;         // 4 - na policku nie je mravec
-
-                for (int k = 0; k < dataV->pocetM; ++k) {
-                    if (dataV->zoznamMravcov[k].polohaX == j && dataV->zoznamMravcov[k].polohaY == i) {
-                        smerMravca = dataV->zoznamMravcov[k].smer;
-
-                    }
-                }
-
-                int farbaPolicka = dataV->pPlocha->plocha[mapFunction(j, i, *dataV->pPlocha->velkostX)];
-                if (smerMravca != 4) {
-                    switch (smerMravca) {
-                        case 0:
-                            if (farbaPolicka) {
-                                printf("▲ ");
-                            } else {
-                                printf("^ ");
-                            }
-                            break;
-                        case 1:
-                            if (farbaPolicka) {
-                                printf("► ");
-                            } else {
-                                printf("> ");
-                            }
-                            break;
-                        case 2:
-                            if (farbaPolicka) {
-                                printf("▼ ");
-                            } else {
-                                printf("v ");
-                            }
-                            break;
-                        case 3:
-                            if (farbaPolicka) {
-                                printf("◄ ");
-                            } else {
-                                printf("< ");
-                            }
-                            break;
-                    }
-                } else {
-                    if (farbaPolicka == 0) {
-                        printf("□ ");
-                    } else {
-                        printf("■ ");
-                    }
-                }
-            }
-            printf("\n");
-        }
+        vykresliPlochu(dataV);
         printf("\n");
         sleep(2);
         dataV->vykresluje = 0;
@@ -633,10 +577,6 @@ int spojenieServer(Plocha *pPlocha, int akcia, int *velkostX, int *velkostY) {
             return 1;
         }
     }
-
-    //read(sockfd,&status,sizeof (status));
-    //status= ntohl(status);
-    //printf("status: %d\n",status);
     close(sockfd);
     return 0;
 }

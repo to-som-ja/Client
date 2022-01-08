@@ -20,6 +20,8 @@ void nastavCierne(Plocha *p);
 
 void *vypinac(void *data);
 
+void vykresliPlochu(const DATA *dataV);
+
 void *zobraz(void *data);
 
 void ulozSvetLokalne(Plocha *p);

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.1)
 project(Client C)
 
 set(CMAKE_C_STANDARD 99)
@@ -6,6 +6,3 @@ set(CMAKE_C_STANDARD 99)
 add_executable(Client main.c Mravec.h Data.h Client.h Client.c)
 
 target_link_libraries(Client pthread)
-
-
-
