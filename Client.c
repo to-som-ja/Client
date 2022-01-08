@@ -10,7 +10,7 @@
 #include "Client.h"
 
 
-#define POCET_AKCII 12
+#define POCET_AKCII 13
 
 
 #define PORT 11124
@@ -21,9 +21,9 @@
                                        "7 - Logika mravcov",\
                                        "8 - Akcia pri strete mravcov", "9 - Spustit / Zastavit simulaciu",\
                                        "10 - Nacitat svet (server)",\
-                                       "11 - Ulozit svet (server)", "99 - Ukoncit aplikaciu"}
+                                       "11 - Ulozit svet (server)", "12 - Info", "99 - Ukoncit aplikaciu"}
 
-void menu () {
+void menu() {
 
     int vstup = 1;
     Plocha p;
@@ -41,7 +41,7 @@ void menu () {
 
 
     int rozmerX, rozmerY;
-    d.pocetM = 1;
+    d.pocetM = 0;
     d.vykresluje = 1;
     d.stoj = 1;
     d.akcieStret = 0;
@@ -51,7 +51,7 @@ void menu () {
     d.stoji = &stojime;
 
     texty;
-    int dostupneAkcie[POCET_AKCII] = {1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1}; //bitova reprezentacia dostupnych akcii
+    int dostupneAkcie[POCET_AKCII] = {1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1}; //bitova reprezentacia dostupnych akcii
     while (vstup != 99) {
         printf("---MENU---\nMozne akcie:\n");
         for (int i = 0; i < POCET_AKCII; ++i) {
@@ -78,7 +78,7 @@ void menu () {
                     p.plocha = malloc(sizeof(int) * rozmerX * rozmerY);
                     memset(p.plocha, 0, rozmerX * rozmerY * sizeof(int));
                     d.pPlocha = &p;
-                    int dostupneAkcie2[12] = {0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1};
+                    int dostupneAkcie2[POCET_AKCII] = {0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1};
                     memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
 
                 }
@@ -100,24 +100,27 @@ void menu () {
                     char nazov[20];
                     scanf("%19s", nazov);
                     FILE *file = fopen(nazov, "r");
-                    int velkostX, velkostY;
-                    fscanf(file, "%d ", &velkostX);
-                    fscanf(file, "%d ", &velkostY);
+                    if (file != 0) {
+                        int velkostX, velkostY;
+                        fscanf(file, "%d ", &velkostX);
+                        fscanf(file, "%d ", &velkostY);
 
-
-                    p.velkostY = &velkostY;
-                    p.velkostX = &velkostX;
-                    p.plocha = malloc(sizeof(int) * rozmerX * rozmerY);
-                    memset(p.plocha, 0, rozmerX * rozmerY * sizeof(int));
-                    d.pPlocha = &p;
-                    for (int i = 0; i < velkostX * velkostY; ++i) {
-                        int farba;
-                        fscanf(file, "%d ", &farba);
-                        p.plocha[i] = farba;
+                        p.velkostY = &velkostY;
+                        p.velkostX = &velkostX;
+                        p.plocha = malloc(sizeof(int) * rozmerX * rozmerY);
+                        memset(p.plocha, 0, rozmerX * rozmerY * sizeof(int));
+                        d.pPlocha = &p;
+                        for (int i = 0; i < velkostX * velkostY; ++i) {
+                            int farba;
+                            fscanf(file, "%d ", &farba);
+                            p.plocha[i] = farba;
+                        }
+                        fclose(file);
+                        int dostupneAkcie2[POCET_AKCII] = {0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1};
+                        memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
+                    } else {
+                        printf("Subor sa nenasiel\n:");
                     }
-                    fclose(file);
-                    int dostupneAkcie2[12] = {0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1};
-                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
                 }
                 break;
             case 5:
@@ -141,7 +144,7 @@ void menu () {
                         Mravec m = {polohaX, polohaY, smer, logika};
                         d.zoznamMravcov[i] = m;
                     }
-                    int dostupneAkcie2[12] = {0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1};
+                    int dostupneAkcie2[POCET_AKCII] = {0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1};
                     memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
                 }
                 break;
@@ -168,13 +171,23 @@ void menu () {
                     // zapniVypni();
                     char str[50];
                     gets(str);
+                    d.vykresluje = 1;
                     pthread_create(&grafikaTH, NULL, &zobraz, &d);
                     pthread_create(&logikaTH, NULL, &logika, &d);
                     pthread_create(&vypinacTH, NULL, &vypinac, &d);
 
                     pthread_join(grafikaTH, NULL);
+
+                    pthread_join(vypinacTH, NULL);
+                    pthread_mutex_lock(d.mutex);
+                    d.vykresluje = 0;
+                    pthread_mutex_unlock(d.mutex);
+
+                    pthread_cond_signal(d.vypocitane);
+
                     pthread_join(logikaTH, NULL);
                     pthread_join(vypinacTH, NULL);
+                    d.stoj = 1;
 
                 }
                 break;
@@ -182,30 +195,79 @@ void menu () {
                 if (dostupneAkcie[9]) {
                     int velkostX;
                     int velkostY;
-                    spojenieServer(&p, 1,&velkostX,&velkostY);
-                    p.velkostX = &velkostX;
-                    p.velkostY = &velkostY;
-                    d.pPlocha=&p;
-
-                    int dostupneAkcie2[12] = {0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1,};
-                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
+                    int subor = spojenieServer(&p, 1, &velkostX, &velkostY);
+                    if (!subor){
+                        p.velkostX = &velkostX;
+                        p.velkostY = &velkostY;
+                        d.pPlocha = &p;
+                        int dostupneAkcie2[POCET_AKCII] = {0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1};
+                        memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
+                    }else{
+                        printf("Subor sa nenasiel\n");
+                    }
                 }
                 break;
             case 11:
                 if (dostupneAkcie[10]) {
-                    spojenieServer(&p, 0 , 0,0);
-                    int dostupneAkcie2[12] = {0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1,};
-                    memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
+                    spojenieServer(&p, 0, 0, 0);
                 }
                 break;
             case 12:
 
-                printf("Velkost X: %d \n",*d.pPlocha->velkostX);
-                printf("Velkost Y: %d \n",*d.pPlocha->velkostY);
-                printf("Pocet mravcov: %d \n",d.pocetM);
-                printf("Akcia pri strete : %d \n",d.akcieStret);
-                for (int i = 0; i < *d.pPlocha->velkostX**d.pPlocha->velkostY; ++i) {
-                    printf("%d ",d.pPlocha->plocha[i]);
+                printf("Velkost X: %d \n", *d.pPlocha->velkostX);
+                printf("Velkost Y: %d \n", *d.pPlocha->velkostY);
+                printf("Pocet mravcov: %d \n", d.pocetM);
+                printf("Akcia pri strete : %d \n", d.akcieStret);
+                for (int i = 0; i < *d.pPlocha->velkostY; ++i) {
+                    for (int j = 0; j < *d.pPlocha->velkostX; ++j) {
+                        int smerMravca = 4;         // 4 - na policku nie je mravec
+
+                        for (int k = 0; k < d.pocetM; ++k) {
+                            if (d.zoznamMravcov[k].polohaX == j && d.zoznamMravcov[k].polohaY == i) {
+                                smerMravca = d.zoznamMravcov[k].smer;
+                            }
+                        }
+                        int farbaPolicka = d.pPlocha->plocha[mapFunction(j, i, *d.pPlocha->velkostX)];
+                        if (smerMravca != 4) {
+                            switch (smerMravca) {
+                                case 0:
+                                    if (farbaPolicka) {
+                                        printf("▲ ");
+                                    } else {
+                                        printf("^ ");
+                                    }
+                                    break;
+                                case 1:
+                                    if (farbaPolicka) {
+                                        printf("► ");
+                                    } else {
+                                        printf("> ");
+                                    }
+                                    break;
+                                case 2:
+                                    if (farbaPolicka) {
+                                        printf("▼ ");
+                                    } else {
+                                        printf("v ");
+                                    }
+                                    break;
+                                case 3:
+                                    if (farbaPolicka) {
+                                        printf("◄ ");
+                                    } else {
+                                        printf("< ");
+                                    }
+                                    break;
+                            }
+                        } else {
+                            if (farbaPolicka == 0) {
+                                printf("□ ");
+                            } else {
+                                printf("■ ");
+                            }
+                        }
+                    }
+                    printf("\n");
                 }
                 break;
         }
@@ -265,7 +327,7 @@ void *logika(void *data) {
             Mravec *mravec = &dataV->zoznamMravcov[i];
             int polohaX = mravec->polohaX;
             int polohaY = mravec->polohaY;
-            int *farbaPolicka = &dataV->pPlocha->plocha[mapFunction(polohaX, polohaY,*dataV->pPlocha->velkostX)];
+            int *farbaPolicka = &dataV->pPlocha->plocha[mapFunction(polohaX, polohaY, *dataV->pPlocha->velkostX)];
 
             // inverzna logika
             if (mravec->logika) {
@@ -297,13 +359,12 @@ void *logika(void *data) {
             //stret
             int cisloPrveho;
             int cisloDruheho;
-            int nachadzaSaInyMravec=0;
+            int nachadzaSaInyMravec = 0;
             for (int j = 0; j < dataV->pocetM; ++j) {
-                if(dataV->zoznamMravcov[j].polohaX==polohaX && dataV->zoznamMravcov[j].polohaY==polohaY)
-                {
-                    if (nachadzaSaInyMravec==0){
-                        cisloPrveho=j;
-                    }else{
+                if (dataV->zoznamMravcov[j].polohaX == polohaX && dataV->zoznamMravcov[j].polohaY == polohaY) {
+                    if (nachadzaSaInyMravec == 0) {
+                        cisloPrveho = j;
+                    } else {
                         cisloDruheho = j;
                     }
                     nachadzaSaInyMravec++;
@@ -311,25 +372,25 @@ void *logika(void *data) {
                 }
 
             }
-            if(nachadzaSaInyMravec>1){
+            if (nachadzaSaInyMravec > 1) {
                 switch (dataV->akcieStret) {
                     case 0:
-                        dataV->zoznamMravcov[cisloDruheho]=dataV->zoznamMravcov[dataV->pocetM];
+                        dataV->zoznamMravcov[cisloDruheho] = dataV->zoznamMravcov[dataV->pocetM];
                         dataV->pocetM--;
-                        dataV->zoznamMravcov[cisloPrveho]=dataV->zoznamMravcov[dataV->pocetM];
+                        dataV->zoznamMravcov[cisloPrveho] = dataV->zoznamMravcov[dataV->pocetM];
                         dataV->pocetM--;
                         break;
                     case 1:
                         //memmove(&dataV->zoznamMravcov[cisloDruheho],&dataV->zoznamMravcov[dataV->pocetM],sizeof (Mravec));
-                        dataV->zoznamMravcov[cisloDruheho]=dataV->zoznamMravcov[dataV->pocetM];
+                        dataV->zoznamMravcov[cisloDruheho] = dataV->zoznamMravcov[dataV->pocetM];
                         dataV->pocetM--;
                         break;
                     case 2:
-                        for (int j = 0; j < dataV->pocetM/2; ++j) {
-                            if ( dataV->zoznamMravcov[j].logika){
-                                dataV->zoznamMravcov[j].logika=0;
-                            }else{
-                                dataV->zoznamMravcov[j].logika=1;
+                        for (int j = 0; j < dataV->pocetM / 2; ++j) {
+                            if (dataV->zoznamMravcov[j].logika) {
+                                dataV->zoznamMravcov[j].logika = 0;
+                            } else {
+                                dataV->zoznamMravcov[j].logika = 1;
                             }
                         }
                         break;
@@ -341,9 +402,8 @@ void *logika(void *data) {
         pthread_cond_signal(dataV->vykreslene);
 
         while (!dataV->stoj) {
-            printf("CAKAM logika\n");
-            pthread_cond_wait(dataV->stoji, dataV->mutex);
-
+            pthread_mutex_unlock(dataV->mutex);
+            return 0;
         }
         pthread_mutex_unlock(dataV->mutex);
     }
@@ -356,7 +416,7 @@ void nahodneCierne(Plocha *p) {
         for (int j = 0; j < *p->velkostY; ++j) {
             int sancaCierne = rand() % 100;
             if (sancaCierne < 30) {
-                p->plocha[mapFunction(i, j,*p->velkostX)] = 1;
+                p->plocha[mapFunction(i, j, *p->velkostX)] = 1;
             }
         }
     }
@@ -385,21 +445,11 @@ void nastavCierne(Plocha *p) {
 
 void *vypinac(void *data) {
     DATA *dataV = (DATA *) data; //stoj na zaciatku = 1
-    while (1) {
-        char str[50];
-        gets(str);
-        //printf("som za gets");
-        pthread_mutex_lock(dataV->mutex);
-        if (dataV->stoj) {
-            dataV->stoj = 0;
-        } else {
-            pthread_cond_broadcast(dataV->stoji);
-            dataV->stoj = 1;
-        }
-        pthread_mutex_unlock(dataV->mutex);
-
-    }
-
+    char str[50];
+    gets(str);
+    pthread_mutex_lock(dataV->mutex);
+    dataV->stoj = 0;
+    pthread_mutex_unlock(dataV->mutex);
     return 0;
 }
 
@@ -426,7 +476,7 @@ void *zobraz(void *data) {
                     }
                 }
 
-                int farbaPolicka = dataV->pPlocha->plocha[mapFunction(j, i,*dataV->pPlocha->velkostX)];
+                int farbaPolicka = dataV->pPlocha->plocha[mapFunction(j, i, *dataV->pPlocha->velkostX)];
                 if (smerMravca != 4) {
                     switch (smerMravca) {
                         case 0:
@@ -473,9 +523,8 @@ void *zobraz(void *data) {
         dataV->vykresluje = 0;
         pthread_cond_signal(dataV->vypocitane);
         while (!dataV->stoj) {
-            printf("CAKAM zobraz\n");
-            pthread_cond_wait(dataV->stoji, dataV->mutex);
-
+            pthread_mutex_unlock(dataV->mutex);
+            return 0;
         }
         pthread_mutex_unlock(dataV->mutex);
     }
@@ -486,60 +535,58 @@ void *zobraz(void *data) {
 void ulozSvetLokalne(Plocha *p) {
     printf("Zadaj nazov suboru :");
     char nazov[20];
-    scanf("%19s",nazov);
-    FILE *file = fopen(nazov,"w");
+    scanf("%19s", nazov);
+    FILE *file = fopen(nazov, "w");
 
-    fprintf(file,"%d \n%d \n",*p->velkostX,*p->velkostY);
+    fprintf(file, "%d \n%d \n", *p->velkostX, *p->velkostY);
     fclose(file);
-    FILE *filea = fopen(nazov,"a");
-    for (int i = 0; i < *p->velkostX*(*p->velkostY); ++i) {
-        fprintf(filea,"%d \n",p->plocha[i]);
+    FILE *filea = fopen(nazov, "a");
+    for (int i = 0; i < *p->velkostX * (*p->velkostY); ++i) {
+        fprintf(filea, "%d \n", p->plocha[i]);
     }
     fclose(filea);
 }
+
 // akcia = 0-uloz na server, 1-nacitaj zo servera
 int spojenieServer(Plocha *pPlocha, int akcia, int *velkostX, int *velkostY) {
+    char buffer[256];
+    bzero(buffer, 256);
+    printf("Zadajte nazov suboru: ");
+    scanf("%255s", buffer);
+    printf("Zadali ste: %s \n", buffer);
     int sockfd, n;
     struct sockaddr_in serv_addr;
-    struct hostent* server;
+    struct hostent *server;
 
     server = gethostbyname(IP_ADDRESS);
-    if (server == NULL)
-    {
+    if (server == NULL) {
         fprintf(stderr, "Error, no such host\n");
         return 2;
     }
 
-    bzero((char*)&serv_addr, sizeof(serv_addr));
+    bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     bcopy(
-            (char*)server->h_addr,
-            (char*)&serv_addr.sin_addr.s_addr,
+            (char *) server->h_addr,
+            (char *) &serv_addr.sin_addr.s_addr,
             server->h_length
     );
     serv_addr.sin_port = htons(PORT);
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0)
-    {
+    if (sockfd < 0) {
         perror("Error creating socket");
         return 3;
     }
 
-    if(connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
-    {
+    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
         perror("Error connecting to socket");
         return 4;
     }
 
-    int converted_numberDotaz =  htonl(akcia);
+    int converted_numberDotaz = htonl(akcia);
     write(sockfd, &converted_numberDotaz, sizeof(converted_numberDotaz));
 
-    char buffer[256];
-    bzero(buffer,256);
-    printf("Zadajte nazov suboru: ");
-    scanf("%255s", buffer);
-    printf("Zadali ste: %s \n", buffer);
 
     int status;
     if (!akcia) {
@@ -563,29 +610,28 @@ int spojenieServer(Plocha *pPlocha, int akcia, int *velkostX, int *velkostY) {
         // Nacitanie mapy zo servera
         write(sockfd, buffer, strlen(buffer));
         read(sockfd, &status, sizeof(status));
-        if (ntohl(status)==0){
+        if (ntohl(status) == 0) {
             int predX;
             int predY;
 
             read(sockfd, &predX, sizeof(predX));
             read(sockfd, &predY, sizeof(predY));
-            printf("X: %d\n",ntohl(predX));
-            printf("Y: %d\n",ntohl(predY));
-            int x= ntohl(predX);
+            printf("X: %d\n", ntohl(predX));
+            printf("Y: %d\n", ntohl(predY));
+            int x = ntohl(predX);
             int y = ntohl(predY);
             *velkostX = x;
             *velkostY = y;
-            pPlocha->plocha = malloc(sizeof (int) * x * y);
-            memset(pPlocha->plocha, 0, sizeof (int) * x * y);
+            pPlocha->plocha = malloc(sizeof(int) * x * y);
+            memset(pPlocha->plocha, 0, sizeof(int) * x * y);
 
-            for (int i = 0; i < x*y; ++i) {
+            for (int i = 0; i < x * y; ++i) {
                 int farba;
                 n = read(sockfd, &farba, sizeof(farba));
                 pPlocha->plocha[i] = ntohl(farba);
             }
-
         } else {
-            printf("cele zle-subor sa nenasiel\n");
+            return 1;
         }
     }
 
