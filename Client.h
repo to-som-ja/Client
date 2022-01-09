@@ -8,6 +8,14 @@
 
 void menu();
 
+void vytvorSvet(Plocha *p, DATA *d, int *rozmerX, int *rozmerY);
+
+void nastavPocetMravcov(int *pocet, DATA *d);
+
+void nastavLogikuMravcov(int pocet, DATA *d);
+
+void nastavAkciuStret(DATA *d);
+
 int mapFunction(int x, int y, int maxX);
 
 void posunMravca(int maxX, int maxY, Mravec *m);

@@ -64,18 +64,7 @@ void menu() {
         switch (vstup) {
             case 1:
                 if (dostupneAkcie[0]) {
-
-                    printf("Zadajte X rozmer sveta: ");
-                    scanf("%d", &rozmerX);
-                    printf("\nZadajte Y rozmer sveta: ");
-                    scanf("%d", &rozmerY);
-                    printf("\n");
-
-                    p.velkostY = &rozmerY;
-                    p.velkostX = &rozmerX;
-                    p.plocha = malloc(sizeof(int) * rozmerX * rozmerY);
-                    memset(p.plocha, 0, rozmerX * rozmerY * sizeof(int));
-                    d.pPlocha = &p;
+                    vytvorSvet(&p, &d, &rozmerX, &rozmerY);
                     int dostupneAkcie2[POCET_AKCII] = {0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1};
                     memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
 
@@ -93,7 +82,6 @@ void menu() {
                 break;
             case 4:
                 if (dostupneAkcie[3]) {
-                    // Nacitanie suboru
                     printf("Zadaj nazov suboru :");
                     char nazov[20];
                     scanf("%19s", nazov);
@@ -105,8 +93,8 @@ void menu() {
 
                         p.velkostY = &velkostY;
                         p.velkostX = &velkostX;
-                        p.plocha = malloc(sizeof(int) * rozmerX * rozmerY);
-                        memset(p.plocha, 0, rozmerX * rozmerY * sizeof(int));
+                        p.plocha = malloc(sizeof(int) * velkostX * velkostY);
+                        memset(p.plocha, 0, velkostX * velkostY * sizeof(int));
                         d.pPlocha = &p;
                         for (int i = 0; i < velkostX * velkostY; ++i) {
                             int farba;
@@ -123,45 +111,24 @@ void menu() {
                 break;
             case 5:
                 if (dostupneAkcie[4]) {
-                    // Ukladanie suboru
                     ulozSvetLokalne(&p);
                 }
                 break;
             case 6:
                 if (dostupneAkcie[5]) {
-                    printf("Zadajte pocet mravcov: ");
-                    scanf("%d", &pocet);
-                    d.pocetM = pocet;
-                    d.zoznamMravcov = malloc(sizeof(Mravec) * pocet);
-                    // Mravec *mravce[pocet];
-                    for (int i = 0; i < pocet; ++i) {
-                        int polohaX = rand() % *d.pPlocha->velkostX;
-                        int polohaY = rand() % *d.pPlocha->velkostY;
-                        int smer = rand() % 4;
-                        int logika = 0;
-                        Mravec m = {polohaX, polohaY, smer, logika};
-                        d.zoznamMravcov[i] = m;
-                    }
+                    nastavPocetMravcov(&pocet, &d);
                     int dostupneAkcie2[POCET_AKCII] = {0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1};
                     memcpy(dostupneAkcie, dostupneAkcie2, sizeof(dostupneAkcie));
                 }
                 break;
             case 7:
                 if (dostupneAkcie[6]) {
-                    int logika;
-                    printf("Vyberte logiku mravcov (0 = priama / 1 = inverzna): ");
-                    scanf("%d", &logika);
-                    for (int i = 0; i < pocet; ++i) {
-                        d.zoznamMravcov[i].logika = logika;
-                    }
+                    nastavLogikuMravcov(pocet, &d);
                 }
                 break;
             case 8:
                 if (dostupneAkcie[7]) {
-                    int akciaStret;
-                    printf("Vyberte ako sa budu mravce spravat pri strete (0 = zanik vsetkych stretnutych mravcov / 1 = prezije jeden mravec / 2 = polovica mravcov sa zacne spravat podla doplnkovej logiky): ");
-                    scanf("%d", &akciaStret);
-                    d.akcieStret = akciaStret;
+                    nastavAkciuStret(&d);
                 }
                 break;
             case 9:
@@ -231,6 +198,51 @@ void menu() {
     pthread_cond_destroy(&vypocitane);
     pthread_cond_destroy(&stojime);
     pthread_mutex_destroy(&mutex);
+}
+
+void nastavAkciuStret(DATA *d) {
+    int akciaStret;
+    printf("Vyberte ako sa budu mravce spravat pri strete\n \t0 = zanik vsetkych stretnutych mravcov \n\t1 = prezije jeden mravec \n\t2 = polovica mravcov sa zacne spravat podla doplnkovej logiky\n: ");
+    scanf("%d", &akciaStret);
+    (*d).akcieStret = akciaStret;
+}
+
+void nastavLogikuMravcov(int pocet, DATA *d) {
+    int logika;
+    printf("Vyberte logiku mravcov (0 = priama / 1 = inverzna): ");
+    scanf("%d", &logika);
+    for (int i = 0; i < pocet; ++i) {
+        (*d).zoznamMravcov[i].logika = logika;
+    }
+}
+
+void nastavPocetMravcov(int *pocet, DATA *d) {
+    printf("Zadajte pocet mravcov: ");
+    scanf("%d", pocet);
+    (*d).pocetM = (*pocet);
+    (*d).zoznamMravcov = malloc(sizeof(Mravec) * (*pocet));
+    for (int i = 0; i < (*pocet); ++i) {
+        int polohaX = rand() % *(*d).pPlocha->velkostX;
+        int polohaY = rand() % *(*d).pPlocha->velkostY;
+        int smer = rand() % 4;
+        int logika = 0;
+        Mravec m = {polohaX, polohaY, smer, logika};
+        (*d).zoznamMravcov[i] = m;
+    }
+}
+
+void vytvorSvet(Plocha *p, DATA *d, int *rozmerX, int *rozmerY) {
+    printf("Zadajte X rozmer sveta: ");
+    scanf("%d", rozmerX);
+    printf("\nZadajte Y rozmer sveta: ");
+    scanf("%d", rozmerY);
+    printf("\n");
+
+    (*p).velkostY = rozmerY;
+    (*p).velkostX = rozmerX;
+    (*p).plocha = malloc(sizeof(int) * (*rozmerX) * (*rozmerY));
+    memset((*p).plocha, 0, (*rozmerX) * (*rozmerY) * sizeof(int));
+    (*d).pPlocha = p;
 }
 
 int mapFunction(int x, int y, int maxX) {
