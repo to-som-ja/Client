@@ -49,10 +49,10 @@ void menu() {
     d.vypocitane = &vypocitane;
     d.vykreslene = &vykreslene;
     d.stoji = &stojime;
-
+    int ukoncenie = 0;
     texty;
     int dostupneAkcie[POCET_AKCII] = {1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1}; //bitova reprezentacia dostupnych akcii
-    while (vstup != 99) {
+    while (!ukoncenie) {
         printf("---MENU---\nMozne akcie:\n");
         for (int i = 0; i < POCET_AKCII; ++i) {
             if (dostupneAkcie[i]) {
@@ -62,7 +62,6 @@ void menu() {
         printf("Vyberam akciu cislo: ");
         scanf("%d", &vstup);
         switch (vstup) {
-
             case 1:
                 if (dostupneAkcie[0]) {
 
@@ -216,6 +215,13 @@ void menu() {
                 printf("Pocet mravcov: %d \n", d.pocetM);
                 printf("Akcia pri strete : %d \n", d.akcieStret);
                 vykresliPlochu(&d);
+                break;
+            case 99:
+                printf("Ukoncujem aplikaciu\n");
+                ukoncenie = 1;
+                break;
+            default:
+                printf("Neplatny vstup, skuste znova!\n");
                 break;
         }
     }
